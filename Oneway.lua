@@ -1,6 +1,7 @@
 local tabs = menu.Combo("Tabs", "Categories", {"Rage", "Visuals", "Helpers", "Keybinds"}, 0, "Tooltip")
 local trashtalk = menu.Switch('General', "TrashTalk", false)
 local FastDT = menu.Switch("General", "Faster Double tap", false)
+local DTCorrection = menu.Switch("General", "Disable DT Correction", false)
 local JumpScout = menu.Switch("General", "Jumpscout", false)
 local JumpScoutHC = menu.SliderInt("Jumpscout", "Hitchance", 1,1,100)
 local JumpScoutMD = menu.SliderInt("Jumpscout", "Minimum damage", 1,1,130)
@@ -2287,6 +2288,7 @@ cheat.RegisterCallback('draw', function()
     local is_misc = quest(tabs:GetInt() == 2)
     local is_hotkeys = quest(tabs:GetInt() == 3)
     FastDT:SetVisible(is_rage)
+    DTCorrection:SetVisible(is_rage)
     lowdelta:SetVisible(is_rage)
     legitaa:SetVisible(is_rage)
     antiaimpresets:SetVisible(is_rage)
@@ -2340,6 +2342,10 @@ cheat.RegisterCallback('draw', function()
         if manualIndicators:GetBool() then manuals() end
         if spectswitch:GetBool() then spectatorList() end
         if keysswitch:GetBool() then keybindsList() end
+    end
+        if (DTCorrection:GetBool()) then
+        g_CVar:FindVar("cl_clock_correction"):SetInt(0)
+        g_CVar:FindVar("cl_clock_correction_adjustment_max_amount"):SetInt(450)
     end
 end)
 
