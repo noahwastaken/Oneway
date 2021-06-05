@@ -12,15 +12,15 @@ local lowdelta = menu.Switch('Anti-Aim', "Low delta", false)
 local legitaa = menu.Switch('Anti-Aim', "Legit AA", false)
 local antiaimpresets = menu.Combo("Anti-Aim", "Presets", {"Disabled", "Matchmaking", "Deathmatch", "HvH", "Wingman"}, 0, "Anti-Aim presets")
 local Trail = menu.Switch('General', "Trails", false)
-local TrailSize = menu.SliderInt("Trails", "Trails size", 1, 1, 10)
-local TrailLength = menu.SliderInt("Trails", "Trails length", 1, 1, 100)
-local TrailColor = menu.SwitchColor("Trails", "Trails colors", false, Color.new(1.0, 1.0, 1.0, 1.0), "Toggle RGB")
+local TrailSize = menu.SliderInt('General', "Trails size", 1, 1, 10)
+local TrailLength = menu.SliderInt('General', "Trails length", 1, 1, 100)
+local TrailColor = menu.SwitchColor('General', "Trails colors", false, Color.new(1.0, 1.0, 1.0, 1.0), "Toggle RGB")
 local manualIndicators = menu.Switch('General', "Manual indicators", false)
 local manualcolors = menu.ColorEdit("General", "Manuals color", Color.new(1.0, 1.0, 1.0, 1.0))
 local lbreaker = g_Config:FindVar("Aimbot", "Anti Aim", "Misc", "Leg Movement")
-local SkeetScope =  menu.SwitchColor("General", "Custom scope", false, Color.new(1.0, 1.0, 1.0, 1.0), "Scope color")
-local ScopeOrigin = menu.SliderInt('Scope', 'Custom scope origin', 0, 0, 100)
-local ScopeWidth = menu.SliderInt('Scope', 'Custom scope width', 0, 0, 100)
+local CustomScope =  menu.SwitchColor('General', "Custom scope", false, Color.new(1.0, 1.0, 1.0, 1.0), "Scope color")
+local ScopeOrigin = menu.SliderInt('General', 'Scope origin', 0, 0, 100)
+local ScopeWidth = menu.SliderInt('General', 'Scope width', 0, 0, 100)
 local displayNades = menu.Switch('General', "Grenade Helper", false)
 local GHOnlyVisible = menu.Switch('Grenade Helper', "Only visible", false)
 local GHSilentThrow = menu.Switch('Grenade Helper', "Silent throw", false, "Rage only")
@@ -32,7 +32,7 @@ local indicators = menu.Switch('Misc', "Indicators", false)
 local spectswitch = menu.Switch('Misc', "Spectator list", false)
 local keysswitch = menu.Switch('Misc', "Keybinds", false)
 local Watermark = menu.Switch('General', "Watermark", false)
-local WatermarkModify = menu.MultiCombo("Watermark", "Modifier", {"Name", "FPS", "Ping", "Server IP", "Tickrate"}, 0, "Items in watermark")
+local WatermarkModify = menu.MultiCombo('General', "Modifier", {"Name", "FPS", "Ping", "Server IP", "Tickrate"}, 0, "Items in watermark")
 local sorted = false
 local autostrafed = 0
 local font = g_Render:InitFont("Tahoma", 16) -- Copperplate Gothic Bold change update LUA custom FONT
@@ -1323,7 +1323,7 @@ end
 
 local toleng = 0
 
-local skeetscope = function()
+local customscope = function()
     local sc = g_EngineClient:GetScreenSize()
     local player = g_EntityList:GetLocalPlayer()
     local scoped = player:GetProp("m_bIsScoped");
@@ -1331,10 +1331,10 @@ local skeetscope = function()
     if scoped then
         if toleng < (ScopeOrigin:GetInt() / 2 + ScopeWidth:GetInt()) then toleng = toleng + 2 else toleng = (ScopeOrigin:GetInt() / 2 + ScopeWidth:GetInt()) end
         gui:SetInt(0);
-        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - 0.1, sc.y / 2 - math.min(ScopeOrigin:GetInt(), toleng)), Vector2.new(sc.x / 2 + 1, sc.y / 2 - math.min(ScopeOrigin:GetInt(), toleng) - math.min(ScopeWidth:GetInt(), toleng)), SkeetScope:GetColor(), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0))
-        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - math.min(ScopeOrigin:GetInt(), toleng), sc.y / 2 - 0.1), Vector2.new(sc.x / 2 - math.min(ScopeOrigin:GetInt(), toleng) - math.min(ScopeWidth:GetInt(), toleng), sc.y / 2  + 1), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0))
-        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - 0.1, sc.y / 2 + math.min(ScopeOrigin:GetInt(), toleng)), Vector2.new(sc.x / 2 + 1, sc.y / 2  + math.min(ScopeOrigin:GetInt(), toleng) + math.min(ScopeWidth:GetInt(), toleng)), SkeetScope:GetColor(), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0))
-        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 + math.min(ScopeOrigin:GetInt(), toleng), sc.y / 2 - 0.1), Vector2.new(sc.x / 2  + math.min(ScopeOrigin:GetInt(), toleng) + math.min(ScopeWidth:GetInt(), toleng), sc.y / 2  + 1), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0), SkeetScope:GetColor(), Color.new(SkeetScope:GetColor():r() * 255, SkeetScope:GetColor():g() * 255, SkeetScope:GetColor():b() * 255,  0))
+        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - 0.1, sc.y / 2 - math.min(ScopeOrigin:GetInt(), toleng)), Vector2.new(sc.x / 2 + 1, sc.y / 2 - math.min(ScopeOrigin:GetInt(), toleng) - math.min(ScopeWidth:GetInt(), toleng)), CustomScope:GetColor(), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0))
+        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - math.min(ScopeOrigin:GetInt(), toleng), sc.y / 2 - 0.1), Vector2.new(sc.x / 2 - math.min(ScopeOrigin:GetInt(), toleng) - math.min(ScopeWidth:GetInt(), toleng), sc.y / 2  + 1), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0))
+        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 - 0.1, sc.y / 2 + math.min(ScopeOrigin:GetInt(), toleng)), Vector2.new(sc.x / 2 + 1, sc.y / 2  + math.min(ScopeOrigin:GetInt(), toleng) + math.min(ScopeWidth:GetInt(), toleng)), CustomScope:GetColor(), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0))
+        g_Render:GradientBoxFilled(Vector2.new(sc.x / 2 + math.min(ScopeOrigin:GetInt(), toleng), sc.y / 2 - 0.1), Vector2.new(sc.x / 2  + math.min(ScopeOrigin:GetInt(), toleng) + math.min(ScopeWidth:GetInt(), toleng), sc.y / 2  + 1), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0), CustomScope:GetColor(), Color.new(CustomScope:GetColor():r() * 255, CustomScope:GetColor():g() * 255, CustomScope:GetColor():b() * 255,  0))
     else
         if toleng > 0 then toleng = toleng - 2 else toleng = 0 end
         gui:SetInt(1);
@@ -1853,7 +1853,7 @@ local drawIndicators = function()
             local player = g_EntityList:GetLocalPlayer()
             local scoped = player:GetProp("m_bIsScoped");
             local y
-            if SkeetScope:GetBool() then
+            if CustomScope:GetBool() then
                 if(scoped) then
                     y = sc.y/2+15+offset+leng
                 else
@@ -2059,7 +2059,7 @@ local manuals = function()
         local player = g_EntityList:GetLocalPlayer()
         local scoped = player:GetProp("m_bIsScoped");
         local gui = g_CVar:FindVar("r_drawvgui")
-        if scoped and SkeetScope:GetBool() then 
+        if scoped and CustomScope:GetBool() then 
             if tolengf < (ScopeOrigin:GetInt() + ScopeWidth:GetInt()) then tolengf = tolengf + 2 else tolengf = (ScopeOrigin:GetInt() + ScopeWidth:GetInt()) end
         else
             if tolengf > 0 then tolengf = tolengf - 2 else tolengf = 0 end
@@ -2303,9 +2303,9 @@ cheat.RegisterCallback('draw', function()
     TrailSize:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailLength:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailColor:SetVisible(quest(is_visible and Trail:GetBool()))
-    SkeetScope:SetVisible(quest(is_visible))
-    ScopeOrigin:SetVisible(quest(is_visible and SkeetScope:GetBool()))
-    ScopeWidth:SetVisible(quest(is_visible and SkeetScope:GetBool()))
+    CustomScope:SetVisible(quest(is_visible))
+    ScopeOrigin:SetVisible(quest(is_visible and CustomScope:GetBool()))
+    ScopeWidth:SetVisible(quest(is_visible and CustomScope:GetBool()))
     displayNades:SetVisible(is_misc)
     GHOnlyVisible:SetVisible(quest(is_misc and displayNades:GetBool()))
     GHSilentThrow:SetVisible(quest(is_misc and displayNades:GetBool()))
@@ -2337,7 +2337,7 @@ cheat.RegisterCallback('draw', function()
         if indicators:GetBool() then drawIndicators() end
         if LegsBreaker:GetBool() then lbreaker:SetInt(math.random(1,2)) end
         if Trail:GetBool() then trails() end
-        if SkeetScope:GetBool() then skeetscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
+        if CustomScope:GetBool() then customscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
         if displayNades:GetBool() then showNades() end
         if displayoneways:GetBool() then showOneways() end
         if hitLogs:GetBool() then drawHitLogs() end
