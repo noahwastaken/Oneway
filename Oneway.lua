@@ -27,7 +27,6 @@ local GHSilentThrow = menu.Switch('Grenade Helper', "Silent throw", false, "Rage
 local GHKeybind = menu.Switch('General', "Throw", false, "Grenade helper throw key")
 local displayoneways = menu.Switch('General', "Oneway helper", false)
 local OWOnlyVisible = menu.Switch('Oneway Helper', "Only visible", false)
-local hitLogs = menu.Switch('Misc', "Hit logs", false)
 local sorted = false
 local autostrafed = 0
 local logs = {}
@@ -2098,34 +2097,6 @@ local nadeHelper = function(cmd)
     end
 end
 
-local drawHitLogs = function()
-    if #logs > 0 then
-        if #logs > 4 then
-            table.remove(logs, 1)
-        end
-        if g_GlobalVars.tickcount >= logs[1][2] then 
-            if logs[1][3] > 0 then logs[1][3] = logs[1][3] - 5 
-            
-            elseif logs[1][3] <= 0 then
-                table.remove(logs, 1)
-            end
-        end
-        for i = 1, #logs do
-            local sc = g_EngineClient:GetScreenSize()
-            local ts = g_Render:CalcTextSize(logs[i][1], 16)
-            if logs[i][3] < 255 then logs[i][3] = logs[i][3] + 1 end
-            g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + ts.x, sc.y - 110 - math.min(21, logs[i][3]/5)*i - ts.y), Vector2.new(sc.x/2, sc.y - 110 - math.min(21, logs[i][3]/5) * i), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, logs[i][3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, logs[i][3]/255)))
-            g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - ts.x, sc.y - 110 - math.min(21, logs[i][3]/5)*i), Vector2.new(sc.x/2, sc.y - 110 - math.min(21, logs[i][3]/5) * i - ts.y), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, logs[i][3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, logs[i][3]/255)))
-            if logs[i][4] then
-                g_Render:Text(tostring(logs[i][1]), Vector2.new(sc.x/2-ts.x/2 + 10, sc.y - 110 - math.min(21, logs[i][3]/5)*i - ts.y), Color.new(1,0,0, math.min(1, logs[i][3]/255)), 15, font)
-            else
-                g_Render:Text(tostring(logs[i][1]), Vector2.new(sc.x/2-ts.x/2 + 10, sc.y - 110 - math.min(21, logs[i][3]/5)*i - ts.y), Color.new(1,1,1, math.min(1, logs[i][3]/255)), 15, font)
-            end
-            
-        end
-    end
-end
-
 local alpha = {
     0,
     0,
@@ -2134,8 +2105,6 @@ local alpha = {
     0,
     0,
 }
-
-
 
 local LowdeltaPreset = function()
      antiaim.OverrideYawOffset(0.0)
@@ -2429,7 +2398,6 @@ cheat.RegisterCallback('draw', function()
 	ui_keybinds_y:SetVisible(is_visible)
 	ui_spectators_x:SetVisible(is_visible)
 	ui_spectators_y:SetVisible(is_visible)
-    hitLogs:SetVisible(is_visible)
     CustomScope:SetVisible(quest(is_visible))
     ScopeOrigin:SetVisible(quest(is_visible and CustomScope:GetBool()))
     ScopeWidth:SetVisible(quest(is_visible and CustomScope:GetBool()))
@@ -2470,7 +2438,6 @@ cheat.RegisterCallback('draw', function()
         if CustomScope:GetBool() then customscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
         if displayNades:GetBool() then showNades() end
         if displayoneways:GetBool() then showOneways() end
-        if hitLogs:GetBool() then drawHitLogs() end
         if manualIndicators:GetBool() then manuals() end
     end
 end)
