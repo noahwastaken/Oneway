@@ -28,18 +28,317 @@ local GHKeybind = menu.Switch('General', "Throw", false, "Grenade helper throw k
 local displayoneways = menu.Switch('General', "Oneway helper", false)
 local OWOnlyVisible = menu.Switch('Oneway Helper', "Only visible", false)
 local hitLogs = menu.Switch('Misc', "Hit logs", false)
-local indicators = menu.Switch('Misc', "Indicators", false)
-local spectswitch = menu.Switch('Misc', "Spectator list", false)
-local keysswitch = menu.Switch('Misc', "Keybinds", false)
-local Watermark = menu.Switch('General', "Watermark", false)
-local WatermarkModify = menu.MultiCombo('General', "Modifier", {"Name", "FPS", "Ping", "Server IP", "Tickrate"}, 0, "Items in watermark")
 local sorted = false
 local autostrafed = 0
-local font = g_Render:InitFont("Tahoma", 16)
 local logs = {}
 local timeout = 0
 local mathhypot = function(a,b)
     return math.sqrt(a*a+b*b)
+end
+
+local double_tap = g_Config:FindVar("Aimbot", "Ragebot", "Exploits", "Double Tap")
+local screen_size = g_EngineClient:GetScreenSize() 
+local cheat_username = cheat.GetCheatUserName()
+local font = g_Render:InitFont("Verdana", 12)
+local floor = math.floor
+local last_time = 0.5
+local font_size = 12
+local fps_info = {}
+local fake_dt_w = 0
+local hz_io_w = 0
+local delta = 0
+local lag
+
+local function text_color(alpha)
+    return Color.new(0.9, 0.9, 0.9, 0.95 * alpha)
+end
+
+local function color(r, g, b, a) return Color.new(r / 255, g / 255, b / 255, a / 255) end
+local function in_box(mouse, x, y, x2, y2) return (mouse.x > x) and (mouse.y > y) and (mouse.x < x2) and (mouse.y < y2) end
+local function clamp(val, min, max) if val > max then return max end if min > val then return min end return val end
+
+local function move(x, y, w, h, slider_x, slider_y)
+    local mouse = cheat.GetMousePos()
+    if (cheat.IsKeyDown(0x1) and cheat.IsMenuVisible() and in_box(mouse, x, y, x + w, y + h)) then
+        slider_x:SetInt(mouse.x - w / 2)
+        slider_y:SetInt(mouse.y - 10)
+    end
+end
+
+local function get_time()
+    local seconds = math.floor(utils.UnixTime() / 1000)
+    local hours = math.floor((seconds / 3600 + 3) % 24)
+    local minutes = math.floor(seconds / 60 % 60)
+    local sec = math.floor(seconds % 60)
+
+    if sec < 10 then sec = "0" .. sec end
+    if minutes < 10 then minutes = "0" .. minutes end
+    if hours < 10 then hours = "0" .. hours end
+
+    return hours .. ":" .. minutes .. ":" .. sec
+end
+
+local function get_spectators()
+    local spectators = {}
+	local players = g_EntityList:GetPlayers()
+	local local_player = g_EntityList:GetLocalPlayer()
+
+	for i, spects in pairs(players) do
+		if not spects:IsDormant() and spects:GetProp("m_iHealth") < 1 then
+			local target = g_EntityList:GetPlayerFromHandle(spects:GetProp("m_hObserverTarget"))
+
+			if target == local_player then
+				table.insert(spectators, spects:GetName())
+			end
+		end
+	end
+    return spectators
+end
+
+local ui_windows = menu.MultiCombo("Visuals", "General", {"Watermark", "Spectators", "Keybinds", "Fake", "IO", "DT", "MS / HZ"}, 0)
+local ui_themes = menu.Combo("Visuals", "Theme", {"Gradient line", "Static line", "Fade line"}, 0)
+local ui_custom_cheat_name = menu.TextBox("Visuals", "Watermark cheat", 20, "")
+local ui_custom_username = menu.TextBox("Visuals", "Watermark username", 20, "")
+local ui_line_color = menu.ColorEdit("Visuals", "Line color", color(100, 100, 255, 255))
+local ui_text_outline = menu.Switch("Visuals", "Text outline", true)
+local ui_box_alpha = menu.SliderInt("Visuals", "Box alpha", 150, 0, 255)
+local ui_keybinds_x = menu.SliderInt("Visuals", "keybinds x", 5, 0, screen_size.x)
+local ui_keybinds_y = menu.SliderInt("Visuals", "keybinds y", math.floor(screen_size.y / 2), 0, screen_size.y)
+local ui_spectators_x = menu.SliderInt("Visuals", "spectators x", 5, 0, screen_size.x)
+local ui_spectators_y = menu.SliderInt("Visuals", "spectators y", math.floor(screen_size.y / 3), 0, screen_size.y)
+
+local get_theme = {
+    [0] = function(x, y, w, col)
+        g_Render:GradientBoxFilled(Vector2.new(x + w, y), Vector2.new(x + w / 2, y - 2), color(255, 234, 0, col:a()), color(255, 0, 238, col:a()), color(255, 234, 0, col:a()), color(255, 0, 238, col:a()))
+        g_Render:GradientBoxFilled(Vector2.new(x, y), Vector2.new(x + w / 2, y - 2), color(0, 200, 255, col:a()), color(255, 0, 238, col:a()), color(0, 200, 255, col:a()), color(255, 0, 238, col:a()))
+    end,
+
+    [1] = function(x, y, w, col) 
+        g_Render:BoxFilled(Vector2.new(x, y), Vector2.new(x + w, y - 2), col)
+    end, 
+
+    [2] = function(x, y, w, col, col2)
+        g_Render:GradientBoxFilled(Vector2.new(x + w, y), Vector2.new(x + w / 2, y - 2), color(col:r(), col:g(), col:b(), col2), col, color(col:r(), col:g(), col:b(), col2), col)
+        g_Render:GradientBoxFilled(Vector2.new(x, y), Vector2.new(x + w / 2, y - 2), color(col:r(), col:g(), col:b(), col2), col, color(col:r(), col:g(), col:b(), col2), col)
+    end
+}
+
+local function get_box_alpha() return ui_box_alpha:GetInt() end
+local function get_delta() return math.min(math.abs(antiaim.GetCurrentRealRotation() - antiaim.GetFakeRotation()) / 2, 60) end
+
+local function get_local_ping()
+    local ping 
+
+    if g_EngineClient:IsConnected() == true then ping = math.floor(g_EngineClient:GetNetChannelInfo():GetLatency(0) * 1000) else ping = 0 end
+
+    return ping
+end
+
+local function get_server_tick()
+    local tick
+
+    if g_EngineClient:IsConnected() == true then tick = math.floor(1.0 / g_GlobalVars.interval_per_tick) else tick = 0 end
+
+    return tostring(tick)
+end
+
+local function get_custom_text_from_ui(text, ui_text)
+    local results_text
+
+    if ui_text:GetString() == "" then results_text = text else results_text = ui_text:GetString() end
+
+    return tostring(results_text)
+end
+
+local function get_slowly_info()
+    if g_GlobalVars.curtime - last_time > 0.5 then
+        last_time = g_GlobalVars.curtime
+        table.insert(fps_info, 1 / g_GlobalVars.frametime) 
+        lag = g_ClientState.m_choked_commands 
+        delta = get_delta()
+    end
+end
+
+local function adaptive_color(val)
+    if val < 40 then return { 255, 255, 255 } end
+    if val < 100 then return { 255, 125, 95 } end
+
+    return { 255, 60, 80 }
+end
+
+local function render_adaptive_box(type, x, y, name, alpha)
+    local name_size = g_Render:CalcTextSize(name, font_size, font)
+    local line = ui_line_color:GetColor()
+
+    if type == "watermark" then 
+        get_theme[ui_themes:GetInt()](x - name_size.x - 16, y, name_size.x + 6, Color.new(line:r(), line:g(), line:b(), 255 * alpha), 10 * alpha)
+        g_Render:BoxFilled(Vector2.new(x - 10, y), Vector2.new(x - name_size.x - 16, y + 17), color(20, 20, 20, get_box_alpha() * alpha))
+        g_Render:Text(name, Vector2.new(x - name_size.x - 12.5, y + 2), text_color(alpha), font_size, font, ui_text_outline:GetBool())
+    end
+
+    if type == "keybinds" then 
+        get_theme[ui_themes:GetInt()](x, y, 150, Color.new(line:r(), line:g(), line:b(), 255 * alpha), 10 * alpha)
+        g_Render:BoxFilled(Vector2.new(x, y), Vector2.new(x + 150, y + 17), color(20, 20, 20, get_box_alpha() * alpha))
+        g_Render:Text(name, Vector2.new(x + 150 / 2 - name_size.x / 2, y + 2), text_color(alpha), font_size, font, ui_text_outline:GetBool())
+    end
+end
+
+local function gradient_rect(x, y, w, h)
+    g_Render:GradientBoxFilled(Vector2.new(x, y), Vector2.new(x + w, y - h), color(134, 175, 255, 255), color(134, 175, 255, 255), color(134, 175, 255, 0), color(134, 175, 255, 0))
+end
+
+local function gradient_background(x, y, w, h, color_1, color_2)
+    g_Render:GradientBoxFilled(Vector2.new(x, y), Vector2.new(x + w / 2, y - h), color_2, color_1, color_2, color_1)
+    g_Render:GradientBoxFilled(Vector2.new(x + w / 2, y), Vector2.new(x + w, y - h), color_1, color_2, color_1, color_2)
+end
+
+local function gradient_for_fake(x, y, w, h, color_1, color_2)
+    g_Render:GradientBoxFilled(Vector2.new(x, y), Vector2.new(x - w, y - h / 2), color_2, color_2, color_1, color_1)
+    g_Render:GradientBoxFilled(Vector2.new(x, y - h / 2), Vector2.new(x - w, y - h), color_1, color_1, color_2, color_2)
+end
+
+local function draw_fucking_box(x, y, w, text, style, line, line_color)
+    local text_size = g_Render:CalcTextSize(text, 12, font) + 10 + w
+
+    if style == 1 then
+        gradient_background(x - text_size.x, y + 19, text_size.x, 19, color(17, 17, 17, 80), color(17, 17, 17, 10))
+    end
+
+    if style == 0 then
+        g_Render:BoxFilled(Vector2.new(x - text_size.x, y), Vector2.new(x, y + 19), color(17, 17, 17, 100))
+    end
+
+    g_Render:Text(text, Vector2.new(x - text_size.x + 5, y + 3), text_color(1), 12, font, ui_text_outline:GetBool())
+
+    if line and line_color == nil then return end
+
+    if line == 0 then 
+        gradient_background(x - text_size.x, y + 20, text_size.x, 1, color(line_color[1], line_color[2], line_color[3], 255), color(line_color[1], line_color[2], line_color[3], 0))
+    end
+
+    if line == 1 then 
+        gradient_for_fake(x - text_size.x, y + 19, 2, 19, color(line_color[1], line_color[2], line_color[3], 255), color(line_color[1], line_color[2], line_color[3], 0))
+    end
+end
+
+local function draw_watermark()
+    local watermark_text = string.format("%s | %s | delay: %sms | %stick | %s", get_custom_text_from_ui("neverlose", ui_custom_cheat_name), get_custom_text_from_ui(cheat_username, ui_custom_username), get_local_ping(), get_server_tick(), get_time())
+
+    render_adaptive_box("watermark", screen_size.x, 10, watermark_text, 1)
+end
+
+local function draw_fake()
+    local fake_text = string.format("FAKE (%s°)", string.format("%.1f", delta))
+    local fake_color = {255 - delta * 4, 15 + delta * 4, 0}
+
+    draw_fucking_box(screen_size.x - fake_dt_w - 10, 32, 0, fake_text, 1, 1, fake_color)
+end
+
+local function draw_dt()
+    local fl_text = string.format("FL: %s", lag)
+    if double_tap:GetBool() then fl_text = fl_text .. " | SHIFTING" end
+
+    local dt_text_size = g_Render:CalcTextSize(fl_text, 12, font)
+
+    fake_dt_w = dt_text_size.x + 15
+
+    draw_fucking_box(screen_size.x - 10, 32, 0, fl_text, 0)
+end
+
+local function draw_hz()
+    local hz_text = string.format("%sms / 144hz", get_local_ping())
+
+    local hz_text_size = g_Render:CalcTextSize(hz_text, 12, font)
+
+    local get_adap_col = adaptive_color(get_local_ping())
+
+    local frame_color = {get_adap_col[1], get_adap_col[2], get_adap_col[3]}
+
+    hz_io_w = hz_text_size.x + 15
+
+    draw_fucking_box(screen_size.x - 10, 57, 0, hz_text, 0, 0, frame_color)
+end
+
+local function draw_io()
+    local cvar_fps_max = g_CVar:FindVar("fps_max"):GetInt()
+
+    if #fps_info > 4 then table.remove(fps_info, 1) end
+
+    draw_fucking_box(screen_size.x - hz_io_w - 10, 57, 25, "IO |", 0)
+
+    if cvar_fps_max > 100 then fps_max = cvar_fps_max else fps_max = 100 end
+
+    for i = 1, #fps_info do
+        gradient_rect(screen_size.x - hz_io_w - 42 - i * 5 + 25, 72, 6, fps_info[i] / fps_max * 9)
+    end
+end
+
+local keybinds_alpha = 0
+
+local function draw_keybinds()
+    local binds = cheat.GetBinds()
+    local keybinds_next_line = 0
+
+    local keybinds_x, keybinds_y = ui_keybinds_x:GetInt(), ui_keybinds_y:GetInt()
+
+    local function render_binds(binds)
+        if not binds:IsActive() then return end
+        local bind_name = binds:GetName()
+        local binds_state = string.format("[%s]", binds:GetValue())
+
+        local binds_state_size = g_Render:CalcTextSize(binds_state, 12, font)
+
+        g_Render:Text(bind_name, Vector2.new(keybinds_x + 1, keybinds_y + 21 + keybinds_next_line), text_color(1), 12, font, ui_text_outline:GetBool())
+        g_Render:Text(binds_state, Vector2.new(keybinds_x + 149 - binds_state_size.x, keybinds_y + 21 + keybinds_next_line), text_color(1), 12, font, ui_text_outline:GetBool())
+
+        keybinds_next_line = keybinds_next_line + 16
+    end
+
+    if #binds > 0 or cheat.IsMenuVisible() then 
+        keybinds_alpha = clamp(keybinds_alpha + (1 / .15) * g_GlobalVars.frametime, 0, 1)
+    else
+        keybinds_alpha = clamp(keybinds_alpha - (1 / .15) * g_GlobalVars.frametime, 0, 1)
+    end
+
+    render_adaptive_box("keybinds", keybinds_x, keybinds_y, "keybinds", keybinds_alpha)
+
+    for i = 1, #binds do 
+        render_binds(binds[i])
+    end
+
+    move(keybinds_x, keybinds_y, 150, 25 + 15 * #binds, ui_keybinds_x, ui_keybinds_y)
+end
+
+local spectators_alpha = 0
+
+local function draw_spectators()
+    local spectators = get_spectators()
+    local spectators_next_line = 0
+
+    local spectators_x, spectators_y = ui_spectators_x:GetInt(), ui_spectators_y:GetInt()
+
+    local function render_spectators(spectators_name)
+        local spectators_state = "[watching]"
+        local spectators_state_size = g_Render:CalcTextSize(spectators_state, 12, font)
+
+        g_Render:Text(spectators_name, Vector2.new(spectators_x + 1, spectators_y + 21 + spectators_next_line), text_color(1), 12, font, ui_text_outline:GetBool())
+        g_Render:Text(spectators_state, Vector2.new(spectators_x + 149 - spectators_state_size.x, spectators_y + 21 + spectators_next_line), text_color(1), 12, font, ui_text_outline:GetBool())
+        spectators_next_line = spectators_next_line + 16
+    end
+
+    if #spectators > 0 or cheat.IsMenuVisible() then 
+        spectators_alpha = clamp(spectators_alpha + (1 / .15) * g_GlobalVars.frametime, 0, 1)
+    else
+        spectators_alpha = clamp(spectators_alpha - (1 / .15) * g_GlobalVars.frametime, 0, 1)
+    end
+
+    render_adaptive_box("keybinds", spectators_x, spectators_y, "spectators", spectators_alpha)
+
+    for i = 1, #spectators do
+        render_spectators(spectators[i])
+    end
+
+    move(spectators_x, spectators_y, 150, 25 + 15 * #spectators, ui_spectators_x, ui_spectators_y)
 end
 
 local hitboxes = {
@@ -67,8 +366,8 @@ cheat.RegisterCallback('registered_shot', function(shot)
     local Name = entity:GetPlayer():GetName()
     if reason == 0 then
         -- hit
-        logs[#logs+1] = {('Hitted ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1]), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Hitted ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1])
+        logs[#logs+1] = {('Hit ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1]), g_GlobalVars.tickcount + 300, 0}
+        print('[Oneway.Lua] '.. 'Hit ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1])
     elseif reason == 1 then
         -- resolver
         logs[#logs+1] = {('Missed ' .. Name .. ' due to resolver'), g_GlobalVars.tickcount + 300, 0}
@@ -1836,139 +2135,7 @@ local alpha = {
     0,
 }
 
-local drawIndicators = function() 
-    local lp = g_EntityList:GetClientEntity(g_EngineClient:GetLocalPlayer())
-    if lp then
-        if (lp:GetProp("m_iHealth") > 0) then
-            local types = {
-                'NORMAL',
-                "OPPOSITE",
-                "SWAY"
-            }
-            local h = 28;
-            local offset = ScopeOrigin:GetInt()
-            local leng = toleng;
-            local sc = g_EngineClient:GetScreenSize()
-            -- local x = sc.x / 2;
-            local player = g_EntityList:GetLocalPlayer()
-            local scoped = player:GetProp("m_bIsScoped");
-            local y
-            if CustomScope:GetBool() then
-                if(scoped) then
-                    y = sc.y/2+15+offset+leng
-                else
-                    y = sc.y/2+15+leng
-                end
-            else
-                y = sc.y/2+15
-            end
-            local customw = 50;
-            local table = 0
-            local antiaim = g_Config:FindVar("Aimbot", "Anti Aim", "Fake Angle", "LBY Mode")
-            local doubleTap = g_Config:FindVar("Aimbot", "Ragebot", "Exploits", "Double Tap")
-            local hideshots = g_Config:FindVar("Aimbot", "Ragebot", "Exploits", "Hide Shots")
-            local fakeduck = g_Config:FindVar("Aimbot", "Anti Aim", "Misc", "Fake Duck")
-            local binds = cheat.GetBinds()
-            local minDMGValue = 0
-            local minDMG = false
-            for i = 1, #binds do --  Iterate over our binds...
-                local bind = binds[i]
-                if bind:GetName() == 'Minimum Damage' then
-                    minDMG = true
-                    minDMGValue = bind:GetValue()
-                end
-            end
-            if lowdelta:GetBool() then
-                text = "LOW DELTA"
-            elseif legitaa:GetBool() then
-                text = "LEGIT AA"
-            else
-                text = types[antiaim:GetInt() + 1]
-            end
-                w = g_Render:CalcTextSize(text, 15, font) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + 14 * table), Vector2.new(sc.x/2, y + 14 * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + 14 * table), Vector2.new(sc.x/2, y + 14 * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + 14 * table), Color.new(255/255, 255/255, 255/255, 1), 15, font)
-                table = table + 1
-            if doubleTap:GetBool() then
-                if alpha[1] < 255 then alpha[1] = alpha[1] + 5 else alpha[1] = 255 end
-                local chrg = exploits.GetCharge()
-                text = 'DT'
-                w = g_Render:CalcTextSize(text, 15, font) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[1]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[1]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[1]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[1]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)))
-                if chrg == 1 then
-                    g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + math.min(17, alpha[1]/10) * table), Color.new(152/255, 240/255, 16/255, alpha[1]/255), 15, font)
-                else
-                    g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + math.min(17, alpha[1]/10) * table), Color.new(255/255, 0/255, 0/255, alpha[1]/255), 15, font)
-                end
-                table = table + math.min(1, alpha[1] /17)
-            else
-                if alpha[1] > 0 then alpha[1] = alpha[1] - 5 else alpha[1] = 0 end
-                text = 'DT'
-                w = g_Render:CalcTextSize(text, 15, font) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[1]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[1]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[1]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[1]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[1]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + math.min(17, alpha[1]/10) * table), Color.new(152/255, 240/255, 16/255, alpha[1]/255), 15, font)
-                table = table + math.max(0, math.min(1, alpha[1] /17))
-            end
-            if hideshots:GetBool() then
-                if alpha[2] < 255 then alpha[2] = alpha[2] + 5 else alpha[2] = 255 end
-                text = 'HIDE SHOTS'
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[2]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[2]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[2]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[2]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2 + 5, y + math.min(17, alpha[2]/10) * table), Color.new(152/255, 240/255, 16/255, alpha[2]/255), 15, font)
-                table = table + math.min(1, alpha[2] /17)
 
-            else
-                if alpha[2] > 0 then alpha[2] = alpha[2] - 5 else alpha[2] = 0 end
-                text = 'HIDE SHOTS'
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[2]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[2]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[2]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[2]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[2]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2 + 5, y + math.min(17, alpha[2]/10) * table), Color.new(152/255, 240/255, 16/255, alpha[2]/255), 15, font)
-                table = table + math.max(0, math.min(1, alpha[2] /17))
-            end
-            if fakeduck:GetBool() then
-                if alpha[3] < 255 then alpha[3] = alpha[3] + 5 else alpha[3] = 255 end
-                text = 'FAKE DUCK'
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[3]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[3]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[3]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[3]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2 + 5, y + math.min(17, alpha[3]/10) * table), Color.new(255/255, 15/255, 15/255, alpha[3]/255), 15, font)
-                table = table + math.min(1, alpha[3] /17)
-
-            else
-                if alpha[3] > 0 then alpha[3] = alpha[3] - 5 else alpha[3] = 0 end
-                text = 'FAKE DUCK'
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[3]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[3]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[3]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[3]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[3]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2 + 5, y + math.min(17, alpha[3]/10) * table), Color.new(255/255, 15/255, 15/255, alpha[3]/255), 15, font)
-                table = table + math.max(0, math.min(1, alpha[3] /17))
-            end
-            if minDMG == true then
-                if alpha[4] < 255 then alpha[4] = alpha[4] + 5 else alpha[4] = 255 end
-                text = 'DMG: ' .. minDMGValue
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[4]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[4]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[4]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[4]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + math.min(17, alpha[4]/10) * table), Color.new(255/255, 255/255, 255/255, alpha[4]/255), 15, font)
-                table = table + math.min(1, alpha[4] /17)
-            else
-                if alpha[4] > 0 then alpha[4] = alpha[4] - 5 else alpha[4] = 0 end
-                text = 'DMG: ' .. minDMGValue
-                w = g_Render:CalcTextSize(text, 15) 
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + math.min(17, alpha[4]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[4]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)))
-                g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + math.min(17, alpha[4]/10) * table), Vector2.new(sc.x/2, y + math.min(17, alpha[4]) * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, math.min(0.5, alpha[4]/255)))
-                g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + math.min(17, alpha[4]/10) * table), Color.new(255/255, 255, 255/255, alpha[4]/255), 15, font)
-                table = table + math.max(0, math.min(1, alpha[4] /17))
-            end
-           
-        end
-    end
-end
 
 local LowdeltaPreset = function()
      antiaim.OverrideYawOffset(0.0)
@@ -1987,57 +2154,6 @@ local LegitAAPreset = function(cmd)
         antiaim.OverrideLimit(60)
         antiaim.OverridePitch(0.0)
  end
-local oldfps = 0
-local ticks = 0
-local oldping = 0
-if g_EngineClient:IsInGame() then
-local server_ip = g_EngineClient:GetNetChannelInfo():GetAddress()
-end
-local watermark = function()
-		    local text = ""
-            local text2 = ""
-			text = "Oneway.Lua"
-			text2 = "Oneway.Lua"
-			local h = 28;
-            local sc = g_EngineClient:GetScreenSize()
-			local x = sc.x
-			local y = 29
-			local customw = 50
-            if(WatermarkModify:GetBool(0)) then
-                text = text .. " | " .. cheat:GetCheatUserName()
-                text2 = text2 .. " | " .. cheat:GetCheatUserName()
-            end
-            if(WatermarkModify:GetBool(1)) then
-                if(ticks >= 100) then
-					ticks = 0
-					local fps = math.floor(1 / g_GlobalVars.frametime)
-					text = text ..  " | FPS: " .. fps;	
-					text2 = text2 ..  " | FPS: 300"	
-					oldfps = fps
-				else 
-					ticks = ticks + 1;
-					text = text .. " | FPS: " .. oldfps;
-					text2 = text2 .. " | FPS: 300"
-                end
-            end
-            if(WatermarkModify:GetBool(2)) then
-                text = text .. " | ping: " .. oldping .. 'ms'      
-                text2 = text2 .. " | ping: 300".. 'ms'
-            end
-			if(WatermarkModify:GetBool(3)) then
-                text = text .. " | " .. g_EngineClient:GetNetChannelInfo():GetAddress()   
-                text2 = text2 .. " | ".. g_EngineClient:GetNetChannelInfo():GetAddress()
-            end
-            if(WatermarkModify:GetBool(4)) then
-                text = text .. " | tick: " .. (1/g_GlobalVars.interval_per_tick)
-                text2 = text2 .. " | tick: 128"    
-            end
-            
-			local w = g_Render:CalcTextSize(text2:upper(), 15, font)
-            
-            g_Render:GradientBoxFilled(Vector2.new(x - w.x - 35, 7 + 8), Vector2.new(x, 7 + 8 + 2+ w.y), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 150/255), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 150/255))
-            g_Render:Text(tostring(text):upper(), Vector2.new(x - w.x, 7 + 8), Color.new(255/255, 255, 255/255, 255/255), 15, font)
-end
 
 local manualalpha = 0
 local manualminus = false
@@ -2299,32 +2415,47 @@ cheat.RegisterCallback('draw', function()
     LegsBreaker:SetVisible(is_rage)
 	trashtalk:SetVisible(is_visible)
     Trail:SetVisible(is_visible)
-    hitLogs:SetVisible(is_visible)
     TrailSize:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailLength:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailColor:SetVisible(quest(is_visible and Trail:GetBool()))
+	ui_windows:SetVisible(is_visible)
+	ui_themes:SetVisible(is_visible)
+	ui_custom_cheat_name:SetVisible(is_visible)
+	ui_custom_username:SetVisible(is_visible)
+	ui_line_color:SetVisible(is_visible)
+	ui_text_outline:SetVisible(is_visible)
+	ui_box_alpha:SetVisible(is_visible)
+	ui_keybinds_x:SetVisible(is_visible)
+	ui_keybinds_y:SetVisible(is_visible)
+	ui_spectators_x:SetVisible(is_visible)
+	ui_spectators_y:SetVisible(is_visible)
+    hitLogs:SetVisible(is_visible)
     CustomScope:SetVisible(quest(is_visible))
     ScopeOrigin:SetVisible(quest(is_visible and CustomScope:GetBool()))
     ScopeWidth:SetVisible(quest(is_visible and CustomScope:GetBool()))
     displayNades:SetVisible(is_misc)
     GHOnlyVisible:SetVisible(quest(is_misc and displayNades:GetBool()))
     GHSilentThrow:SetVisible(quest(is_misc and displayNades:GetBool()))
-    Watermark:SetVisible(is_visible)
-    WatermarkModify:SetVisible(quest(is_visible and Watermark:GetBool()))
     manualIndicators:SetVisible(is_visible)
     GHKeybind:SetVisible(is_hotkeys)
     displayoneways:SetVisible(is_misc)
     OWOnlyVisible:SetVisible(quest(is_misc and displayoneways:GetBool()))
-    indicators:SetVisible(is_visible)
     JumpScout:SetVisible(is_rage)
     JumpScoutHC:SetVisible(quest(is_rage and JumpScout:GetBool()))
     JumpScoutMD:SetVisible(quest(is_rage and JumpScout:GetBool()))
     manualcolors:SetVisible(is_visible)
-    spectswitch:SetVisible(is_visible)
-    keysswitch:SetVisible(is_visible)
     
     local local_player_index    = g_EngineClient:GetLocalPlayer()
     local local_player          = g_EntityList:GetClientEntity(local_player_index)
+
+    get_slowly_info()
+    if ui_windows:GetBool(0) then draw_watermark() end
+    if ui_windows:GetBool(1) then draw_spectators() end
+    if ui_windows:GetBool(2) then draw_keybinds() end
+    if ui_windows:GetBool(3) then draw_fake() end
+    if ui_windows:GetBool(4) then draw_io() end
+    if ui_windows:GetBool(5) then draw_dt() end
+    if ui_windows:GetBool(6) then draw_hz() end
     
     if not local_player then
         cachedmaps = {}
@@ -2334,17 +2465,13 @@ cheat.RegisterCallback('draw', function()
         return
     end
     if local_player:GetProp("m_iHealth") > 0 then
-        if indicators:GetBool() then drawIndicators() end
         if LegsBreaker:GetBool() then lbreaker:SetInt(math.random(1,2)) end
         if Trail:GetBool() then trails() end
         if CustomScope:GetBool() then customscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
         if displayNades:GetBool() then showNades() end
         if displayoneways:GetBool() then showOneways() end
         if hitLogs:GetBool() then drawHitLogs() end
-        if Watermark:GetBool() then watermark() end
         if manualIndicators:GetBool() then manuals() end
-        if spectswitch:GetBool() then spectatorList() end
-        if keysswitch:GetBool() then keybindsList() end
     end
 end)
 
@@ -2446,8 +2573,8 @@ cheat.RegisterCallback('events', function(event)
             weapon = event:GetString('weapon');
             local entity = g_EntityList:GetClientEntity(victim)
             local Name = entity:GetPlayer():GetName()
-            logs[#logs+1] = {('Hitted by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1]), g_GlobalVars.tickcount + 300, 0}
-            print('[Oneway.Lua] '.. 'Hitted by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1])
+            logs[#logs+1] = {('Hit by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1]), g_GlobalVars.tickcount + 300, 0}
+            print('[Oneway.Lua] '.. 'Hit by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1])
         end
     end
 end)
@@ -2689,22 +2816,6 @@ cheat.RegisterCallback('pre_prediction', function(cmd)
             setthree = false
             setfour = true
             savedAntiAims[12] = 2
-        end
-    end
-    if Watermark:GetBool() then
-        ticksAfterUpload = ticksAfterUpload + 1
-            if ticksAfterUpload >= 200 then
-                if(pingticks >= 300) then
-                    pingticks = 0
-                    local INetChannelInfo = g_EngineClient:GetNetChannelInfo()
-                    local get_avg_latency = INetChannelInfo:GetAvgLatency(0)
-                    local latency = get_avg_latency * 1000
-                    if latency then
-                        oldping = math.floor(latency)
-                    end
-                else 
-                    pingticks = pingticks + 1;
-                end
         end
     end
     if JumpScout:GetBool() and jumpScouted == true then 
