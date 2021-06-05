@@ -1,4 +1,5 @@
 local tabs = menu.Combo("Tabs", "Categories", {"Rage", "Visuals", "Helpers", "Keybinds"}, 0, "Tooltip")
+local trashtalk = menu.Switch('General', "TrashTalk", false)
 local FastDT = menu.Switch("General", "Faster Double tap", false)
 local JumpScout = menu.Switch("General", "Jumpscout", false)
 local JumpScoutHC = menu.SliderInt("Jumpscout", "Hitchance", 1,1,100)
@@ -6,7 +7,7 @@ local JumpScoutMD = menu.SliderInt("Jumpscout", "Minimum damage", 1,1,130)
 local LegsBreaker = menu.Switch('General', "Legs Breaker", false)
 local lowdelta = menu.Switch('Anti-Aim', "Low delta", false)
 local legitaa = menu.Switch('Anti-Aim', "Legit AA", false)
-local antiaimpresets = menu.Combo("Anti-Aim", "Presets", {"Disabled", "Matchmaking", "Deathmatch", "Arena", "2X2"}, 0, "Anti-Aim presets")
+local antiaimpresets = menu.Combo("Anti-Aim", "Presets", {"Disabled", "Matchmaking", "Deathmatch", "HvH", "Wingman"}, 0, "Anti-Aim presets")
 local Trail = menu.Switch('General', "Trails", false)
 local TrailSize = menu.SliderInt("Trails", "Trails size", 1, 1, 10)
 local TrailLength = menu.SliderInt("Trails", "Trails length", 1, 1, 100)
@@ -23,53 +24,20 @@ local GHSilentThrow = menu.Switch('Grenade Helper', "Silent throw", false, "Rage
 local GHKeybind = menu.Switch('General', "Throw", false, "Grenade helper throw key")
 local displayoneways = menu.Switch('General', "Oneway helper", false)
 local OWOnlyVisible = menu.Switch('Oneway Helper', "Only visible", false)
-local HudEnabled = menu.Switch('Misc', "Hud", false)
 local hitLogs = menu.Switch('Misc', "Hit logs", false)
 local indicators = menu.Switch('Misc', "Indicators", false)
 local spectswitch = menu.Switch('Misc', "Spectator list", false)
-local should_disable =  menu.Switch("General", "Disable thirdperson on nade", false)
-local thirdperson_bind =  menu.Switch("General", "Thirdperson", false)
-local onko_tp = g_Config:FindVar( "Visuals", "View", "Thirdperson", "Enable Thirdperson" )
 local keysswitch = menu.Switch('Misc', "Keybinds", false)
 local Watermark = menu.Switch('General', "Watermark", false)
-local WatermarkModify = menu.MultiCombo("Watermark", "Modifier", {"Name", "FPS", "Ping", "Tickrate"}, 0, "Items in watermark")
+local WatermarkModify = menu.MultiCombo("Watermark", "Modifier", {"Name", "FPS", "Ping", "Server IP", "Tickrate"}, 0, "Items in watermark")
 local sorted = false
 local autostrafed = 0
 local font = g_Render:InitFont("Tahoma", 16) -- Copperplate Gothic Bold change update LUA custom FONT
-local image_size = Vector2.new(746 / 5, 1070 / 5)
-local url = "https://i.imgur.com/v6sH6wA.png"
-local bytes = http.Get(url)
-local penguin = g_Render:LoadImage(bytes, image_size)
 local logs = {}
 local timeout = 0
 local mathhypot = function(a,b)
     return math.sqrt(a*a+b*b)
 end
-local noti = false
-cheat.RegisterCallback("createmove", function()
-
-
-
-    if g_EngineClient:IsInGame() and should_disable:GetBool() then
-        local localplayer = g_EntityList:GetClientEntity(g_EngineClient:GetLocalPlayer()):GetPlayer()
-        local weapon = localplayer:GetActiveWeapon()
-        if weapon == nil then return end
-
-        local autism = true
-
-        if weapon:IsGrenade() then
-             onko_tp:SetBool(false)
-             autism = false
-        end
-         if thirdperson_bind:GetBool() and autism == true then
-             onko_tp:SetBool(true)
-      else
-            onko_tp:SetBool(false)
-         end
-    end
-
-end);
-
 
 local hitboxes = {
     'generic',
@@ -1828,26 +1796,6 @@ local nadeHelper = function(cmd)
     end
 end
 
-local drawHud = function()
-
-        if g_CVar:FindVar("hidehud"):GetInt() == 0 then
-            g_CVar:FindVar("hidehud"):SetInt(8)
-        end
-        local size = Vector2.new(100, 100)
-        local sc = g_EngineClient:GetScreenSize()
-        local pos = Vector2.new(sc.x / 2 - 50, sc.y - 52 - 50)
-        local ts = g_Render:CalcTextSize("nade", 16)
-        g_Render:CircleFilled(Vector2.new(sc.x / 2, sc.y - 52), 50.2, 50, Color.new(0,0,0,0.5))
-        g_Render:Image(penguin, pos, size)
-        g_Render:GradientBoxFilled(Vector2.new(sc.x/2+ 210, sc.y - 60), Vector2.new(sc.x/2+(49.55), sc.y - 45), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
-        g_Render:GradientBoxFilled(Vector2.new(sc.x/2- 210, sc.y - 60), Vector2.new(sc.x/2-(49.55), sc.y - 45), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
-        local health = g_EntityList:GetClientEntity(g_EngineClient:GetLocalPlayer()):GetPlayer():GetProp("m_iHealth")
-        local armor = g_EntityList:GetClientEntity(g_EngineClient:GetLocalPlayer()):GetPlayer():GetProp("m_ArmorValue")
-        g_Render:Text(tostring("HP:"), Vector2.new(sc.x/2+ 60, sc.y - 61), Color.new(1.0, 1.0, 1.0, 1.0), 15, font)
-        g_Render:Text(tostring(health), Vector2.new(sc.x/2+ 60 + g_Render:CalcTextSize("HP:", 15).x + 3, sc.y - 61), Color.new((255 - 155 - health + 100)/255, (health + 100)/255, (0)/255, 255/255), 15, font)
-        g_Render:Text(tostring("ARMOR:"), Vector2.new(sc.x/2 - 70 - g_Render:CalcTextSize("ARMOR..:", 15).x - 3, sc.y - 61), Color.new(1.0, 1.0, 1.0, 1.0), 15, font)
-        g_Render:Text(tostring(armor), Vector2.new(sc.x/2-80, sc.y - 61), Color.new(7/255, 169/255, 232/255, 1.0), 15, font)
-end
 local drawHitLogs = function()
     if #logs > 0 then
         if #logs > 4 then
@@ -1935,7 +1883,6 @@ local drawIndicators = function()
                 text = types[antiaim:GetInt() + 1]
             end
                 w = g_Render:CalcTextSize(text, 15, font) 
-                -- g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x / 2, y + 14 * table), Vector2.new(sc.x/2 - w.x / 2, y + 14 * table + w.y), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
                 g_Render:GradientBoxFilled(Vector2.new(sc.x/2 + w.x, y + 14 * table), Vector2.new(sc.x/2, y + 14 * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
                 g_Render:GradientBoxFilled(Vector2.new(sc.x/2 - w.x, y + 14 * table), Vector2.new(sc.x/2, y + 14 * table + w.y + 1), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 0.5))
                 g_Render:Text(tostring(text), Vector2.new(sc.x/2 - w.x / 2, y + 14 * table), Color.new(255/255, 255/255, 255/255, 1), 15, font)
@@ -2020,26 +1967,29 @@ local drawIndicators = function()
     end
 end
 
--- local LowdeltaPreset = function()
---     antiaim.OverrideYawOffset(0.0)
---     antiaim.OverrideLimit(-20.0)
---     antiaim.OverrideLBYOffset(21)
--- end
+local LowdeltaPreset = function()
+     antiaim.OverrideYawOffset(0.0)
+     antiaim.OverrideLimit(-20.0)
+     antiaim.OverrideLBYOffset(21)
+ end
 
--- local LegitAAPreset = function(cmd)
---     -- cmd.buttons = bit.band(cmd.buttons, bit.bnot(32))
---     if antiaim.GetInverterState() then
---         antiaim.OverrideLBYOffset(-60)
---     else
---         antiaim.OverrideLBYOffset(60)
---     end
---     antiaim.OverrideYawOffset(180.0)
---     antiaim.OverrideLimit(60)
---     antiaim.OverridePitch(0.0)
--- end
+local LegitAAPreset = function(cmd)
+    cmd.buttons = bit.band(cmd.buttons, bit.bnot(32))
+    if antiaim.GetInverterState() then
+        antiaim.OverrideLBYOffset(-60)
+    else
+        antiaim.OverrideLBYOffset(60)
+    end
+        antiaim.OverrideYawOffset(180.0)
+        antiaim.OverrideLimit(60)
+        antiaim.OverridePitch(0.0)
+ end
 local oldfps = 0
 local ticks = 0
 local oldping = 0
+if g_EngineClient:IsInGame() then
+local server_ip = g_EngineClient:GetNetChannelInfo():GetAddress()
+end
 local watermark = function()
 		    local text = ""
             local text2 = ""
@@ -2071,18 +2021,17 @@ local watermark = function()
                 text = text .. " | ping: " .. oldping .. 'ms'      
                 text2 = text2 .. " | ping: 300".. 'ms'
             end
-            if(WatermarkModify:GetBool(3)) then
+			if(WatermarkModify:GetBool(3)) then
+                text = text .. " | " .. g_EngineClient:GetNetChannelInfo():GetAddress()   
+                text2 = text2 .. " | ".. g_EngineClient:GetNetChannelInfo():GetAddress()
+            end
+            if(WatermarkModify:GetBool(4)) then
                 text = text .. " | tick: " .. (1/g_GlobalVars.interval_per_tick)
                 text2 = text2 .. " | tick: 128"    
             end
             
 			local w = g_Render:CalcTextSize(text2:upper(), 15, font)
             
-            if(penguin ~= nil) then
-                local size = Vector2.new(40, 40)
-                local pos = Vector2.new(x - w.x - 35, 2)
-                g_Render:Image(penguin, pos, size)
-            end
             g_Render:GradientBoxFilled(Vector2.new(x - w.x - 35, 7 + 8), Vector2.new(x, 7 + 8 + 2+ w.y), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 150/255), Color.new(0, 0, 0, 0), Color.new(0, 0, 0, 150/255))
             g_Render:Text(tostring(text):upper(), Vector2.new(x - w.x, 7 + 8), Color.new(255/255, 255, 255/255, 255/255), 15, font)
 end
@@ -2342,8 +2291,8 @@ cheat.RegisterCallback('draw', function()
     legitaa:SetVisible(is_rage)
     antiaimpresets:SetVisible(is_rage)
     LegsBreaker:SetVisible(is_rage)
+	trashtalk:SetVisible(is_visible)
     Trail:SetVisible(is_visible)
-    HudEnabled:SetVisible(is_visible)
     hitLogs:SetVisible(is_visible)
     TrailSize:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailLength:SetVisible(quest(is_visible and Trail:GetBool()))
@@ -2367,8 +2316,6 @@ cheat.RegisterCallback('draw', function()
     manualcolors:SetVisible(is_visible)
     spectswitch:SetVisible(is_visible)
     keysswitch:SetVisible(is_visible)
-    should_disable:SetVisible(is_visible)
-    thirdperson_bind:SetVisible(quest(is_hotkeys and should_disable:GetBool()))
     
     local local_player_index    = g_EngineClient:GetLocalPlayer()
     local local_player          = g_EntityList:GetClientEntity(local_player_index)
@@ -2377,7 +2324,6 @@ cheat.RegisterCallback('draw', function()
         cachedmaps = {}
         cachedoneways = {}
         logs = {}
-        if g_CVar:FindVar("hidehud"):GetInt() == 8 then g_CVar:FindVar("hidehud"):SetInt(0) end
         g_CVar:FindVar("r_drawvgui"):SetInt(1)
         return
     end
@@ -2389,20 +2335,11 @@ cheat.RegisterCallback('draw', function()
         if SkeetScope:GetBool() then skeetscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
         if displayNades:GetBool() then showNades() end
         if displayoneways:GetBool() then showOneways() end
-        if HudEnabled:GetBool() then drawHud() else if g_CVar:FindVar("hidehud"):GetInt() == 8 then g_CVar:FindVar("hidehud"):SetInt(0) end end
         if hitLogs:GetBool() then drawHitLogs() end
         if Watermark:GetBool() then watermark() end
         if manualIndicators:GetBool() then manuals() end
         if spectswitch:GetBool() then spectatorList() end
         if keysswitch:GetBool() then keybindsList() end
-        if (should_disable:GetBool()) then
-            if noti == false then
-                noti = true
-                cheat.AddNotify("Announce", "Check out new keybind!")
-            end
-        else
-            noti = false
-        end
     end
 end)
 
@@ -2695,8 +2632,7 @@ cheat.RegisterCallback('pre_prediction', function(cmd)
         end
     end
     if Watermark:GetBool() then
-        if penguin ~= nil then
-            ticksAfterUpload = ticksAfterUpload + 1
+        ticksAfterUpload = ticksAfterUpload + 1
             if ticksAfterUpload >= 200 then
                 if(pingticks >= 300) then
                     pingticks = 0
@@ -2709,7 +2645,6 @@ cheat.RegisterCallback('pre_prediction', function(cmd)
                 else 
                     pingticks = pingticks + 1;
                 end
-            end
         end
     end
     if JumpScout:GetBool() and jumpScouted == true then 
@@ -2744,6 +2679,113 @@ notified = false
         attacked = false 
         sorted = false
     end
+
+local phrases = {
+   "u r so ez ",
+	"get clapped ",
+	"did that hurt  ?",
+	"do you want me to blow on that ?",
+	"btw you are supposed to shoot me .",
+	"sry I didn't know you were retarded ",
+	"CSGO->Game->Game->TurnOnInstructorMessages that might help you ",
+	"better luck next time ",
+	"bro how did you hit the accept button with that aim ???",
+	"ff ?",
+	" should i teach you, just if you want .",
+	"xD my cat killed you ",
+	"better do you homework ",
+	"Which controller are you using ???",
+	"Did you ever think about suicide? It would make things quicker .",
+	"is that a decoy, or are you trying to shoot somebody ?",
+	"If this guy was the shooter Harambe would still be alive ",
+	"CS:GO is too hard for you m8 maybe consider a game that requires less skill, like idk.... solitaire ",
+	"Your shots are like a bad girlfriend: No Head",
+	"I would call you AIDS but at least AIDS gets kills.",
+	"I could swallow bullets and shit out a better spray than that",
+	"Don't be a loser, buy a rope and hang yourself",
+	"This guy is more toxic than the beaches at Fukushima",
+	"deranking?",
+	"Road to Bronce?",
+	"Did you learn your spray downs in a bukkake video?",
+	"Oops, I must have chosen easy bots by accident",
+	"server cvar 'sv_rekt' changed to 1.",
+	"Did you notice warm up is already over? Please start playing seriously!!!",
+	"How do you change your difficulty settings? My CSGO is stuck on easy",
+	"I'd say your aim is cancer, but cancer kills.",
+	"I'd call you corona but nobody's afraid of you and corona gets kills.",
+	"Nice $4750 decoy ' ' ",
+	"CRY HERE ---> |___| <--- Africans need water",
+	"Was that your spray on the wall or are you just happy to see me?",
+	"Internet Explorer is faster than your reactions",
+	"Safest place for us to stand is in front of ' ' ´s gun",
+	"Is your monitor on?",
+	"mad cuz bad",
+	"Choose your excuse: I suck, I'm bad, I can't play CSGO, WHY ARE YOU BULLYING ME",
+	"If you want to play against enemies of your skill level just go to the main menu and click 'Offline with Bots'",
+	"Did you know that csgo is free to uninstall?",
+    "halt die fresse noname ",
+    "Your ass is grass and I've got the weed-whacker.",
+    "You are the reason they put instructions on shampoo.",
+    "I used to fuck guys like you in prison",
+    "i'll fuck you 'til you love me, faggot",
+	"I smell your drunk mom from here.",
+	"I'm the reason your dad's gay",
+	"If you were a CSGO match, your mother would have a 7day cool down all the time, because she kept abandoning you.",
+	"If I were to commit suicide, I would jump from your ego to your elo.",
+	"You sound like your parents beat each other in front of you",
+	"My knife is well-worn, just like your mother",
+	"You're the human equivalent of a participation award.",
+	"Did you grow up near by Chernobyl or why are you so toxic?",
+	"I thought I put bots on hard, why are they on easy?",
+	"You sound like your parents beat each other in front of you",
+	"My knife is well-worn, just like your mother",
+	"You're the human equivalent of a participation award.",
+	"Did you grow up near by Chernobyl or why are you so toxic?",
+	"I thought I put bots on hard, why are they on easy?",
+	"Your nans like my ak vulcan, battle-scarred",
+	"I have a coupon code for you = y0UStUP1d. It only works for dumb people so can you maybe try that one out for me?",
+	"You're almost as salty as the semen dripping from your mum's mouth",
+	"If you fuck your mom and sister it's still only a 2 sum. Are you from Alabama by any chance?",
+	"Maybe if you stopped taking loads in the mouth you wouldn't be so salty",
+	"The only thing you carry is an extra chromosome.",
+	"I kissed your mom last night. Her breath was globally offensive",
+	"You can't even carry groceries in from the car",
+	"You can feel the autism",
+	"Who are you sponsored by? Parkinson's?",
+	"You define autism",
+	"You dropped your weapon just like your mom dropped you on your head as a kid",
+	"Shut up kid and talk to me when your balls have reached the bottom of your spiderman underwear!",
+	"The time you need to react is equal to the WindowsXP boot time!",
+	"You Polish fuck, Hitler should had killed your family",
+	"Do you know the STOP BULLYING ME kid? That could be you.",
+	"Bro you couldn't hit an elephant in the ass with a shotgun with aim like that",
+	"Hey man, dont worry about being bad. It's called a trashCAN not a trashCAN'T.",
+	"If i wanted to listen to an asshole I would fart",
+	"Sell your computer and buy a Wii",
+	"Are you one of those SpECi4L kids?",
+	"Yo momma's so damn fat they named her after your throwing skills",
+	"You have a reaction time slower than coastal erosion.",
+	"I PRAY TO GOD A PACK OF WOLVES RAPES YOU IN THE DEAD OF WINTER AND FORCES YOU TO WALK HOME BAREFOOT!",
+	"LOL watchin u play this game is like watching helen keller play tennis.",
+	"Don't be upsetti, have some spaghetti",
+	"Which one of your 2 dads taught you how to play CS?",
+}
+
+local function get_phrase()
+    return phrases[utils.RandomInt(1, #phrases)]:gsub('\"', '')
+end
+
+cheat.RegisterCallback("events", function(event)
+	if (trashtalk:GetBool() == false) then return end
+    if (trashtalk:GetBool() == true) then
+    if event:GetName() ~= "player_death" then return end
+end
+    local me = g_EngineClient:GetLocalPlayer()
+    local victim = g_EngineClient:GetPlayerForUserId(event:GetInt("userid"))
+    local attacker = g_EngineClient:GetPlayerForUserId(event:GetInt("attacker"))
+
+    if victim == attacker or attacker ~= me then return end
+
+    g_EngineClient:ExecuteClientCmd('say "' .. get_phrase() .. '"')
 end)
-
-
+end)
