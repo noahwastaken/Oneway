@@ -1,7 +1,9 @@
 local tabs = menu.Combo("Tabs", "Categories", {"Rage", "Visuals", "Helpers", "Keybinds"}, 0, "Tooltip")
 local trashtalk = menu.Switch('General', "TrashTalk", false)
-local FastDT = menu.Switch("General", "Faster Double tap", false)
-local DTCorrection = menu.Switch("General", "Disable DT Correction", false)
+local DTMenu = menu.Switch("Exploits", "Customized Doubletap", false, "")
+local DTCorrection = menu.Switch("Exploits", "Disable DT Correction", false)
+local DTModes = menu.Combo("Exploits", "Modes", {"Instant", "Medium", "Slow", "Insane"}, 0)
+local DTRecharge = menu.Switch("Exploits", "Instant Recharge", false)
 local JumpScout = menu.Switch("General", "Jumpscout", false)
 local JumpScoutHC = menu.SliderInt("Jumpscout", "Hitchance", 1,1,100)
 local JumpScoutMD = menu.SliderInt("Jumpscout", "Minimum damage", 1,1,130)
@@ -2287,8 +2289,10 @@ cheat.RegisterCallback('draw', function()
     local is_visible = quest(tabs:GetInt() == 1)
     local is_misc = quest(tabs:GetInt() == 2)
     local is_hotkeys = quest(tabs:GetInt() == 3)
-    FastDT:SetVisible(is_rage)
-    DTCorrection:SetVisible(is_rage)
+	DTMenu:SetVisible(is_rage)
+	DTCorrection:SetVisible(is_rage)
+	DTModes:SetVisible(is_rage)
+    DTRecharge:SetVisible(is_rage)
     lowdelta:SetVisible(is_rage)
     legitaa:SetVisible(is_rage)
     antiaimpresets:SetVisible(is_rage)
@@ -2331,7 +2335,6 @@ cheat.RegisterCallback('draw', function()
     end
     if local_player:GetProp("m_iHealth") > 0 then
         if indicators:GetBool() then drawIndicators() end
-        if FastDT:GetBool() then recharge() end
         if LegsBreaker:GetBool() then lbreaker:SetInt(math.random(1,2)) end
         if Trail:GetBool() then trails() end
         if SkeetScope:GetBool() then skeetscope() else g_CVar:FindVar("r_drawvgui"):SetInt(1) end
@@ -2343,11 +2346,62 @@ cheat.RegisterCallback('draw', function()
         if spectswitch:GetBool() then spectatorList() end
         if keysswitch:GetBool() then keybindsList() end
     end
-        if (DTCorrection:GetBool()) then
+end)
+
+local function instant_recharge()
+    
+    if (DTRecharge:GetBool()) then
+        exploits.ForceCharge()
+    end
+
+end
+
+local function exploits_func()
+     if (DTMenu:GetBool() == false) then
+    DTCorrection:SetVisible(false)
+    DTModes:SetVisible(false)
+    DTRecharge:SetVisible(false)
+	end
+	if (DTMenu:GetBool() == true) then
+    DTCorrection:SetVisible(true)
+    DTModes:SetVisible(true)
+    DTRecharge:SetVisible(true)
+	end
+	
+    local instant = 16
+    local fast = 15
+    local default = 12
+
+    local insecure = 0
+    local secure = 1
+    local safe = 2
+
+    local cl_clock_correction = g_CVar:FindVar("cl_clock_correction")
+    local sv_maxusrcmdprocessticks = g_CVar:FindVar("sv_maxusrcmdprocessticks")
+
+    if (DTCorrection:GetBool()) then
         g_CVar:FindVar("cl_clock_correction"):SetInt(0)
         g_CVar:FindVar("cl_clock_correction_adjustment_max_amount"):SetInt(450)
     end
-end)
+
+    if (DTModes:GetInt() == 0) then
+        exploits.OverrideDoubleTapSpeed(instant)
+
+    else if (DTModes:GetInt() == 1) then
+        exploits.OverrideDoubleTapSpeed(fast)
+        
+    else if (DTModes:GetInt() == 2) then
+        exploits.OverrideDoubleTapSpeed(default)
+        
+    else if (DTModes:GetInt() == 3) then
+        exploits.OverrideDoubleTapSpeed(17)
+        g_CVar:FindVar("cl_clock_correction"):SetInt(0)
+        g_CVar:FindVar("cl_clock_correction_adjustment_max_amount"):SetInt(450)
+	end
+    end
+    end
+    end   
+end
 
 local jumpScouted = false
 local jumpscoutTicks = 0
