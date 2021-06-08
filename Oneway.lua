@@ -1,16 +1,16 @@
-local tabs = menu.Combo("Tabs", "Categories", {"Rage", "Visuals", "Helpers", "Keybinds"}, 0, "Tooltip")
+local tabs = menu.Combo("Tabs", "Categories", {"Rage", "Visuals", "Helpers"}, 0, "Tooltip")
+local DTModes = menu.Combo("Doubletap Exploits", "Modes", {"Default", "Fast", "Instant", "Max Speed"}, 0)
+local DTCorrection = menu.Switch("Doubletap Exploits", "Disable DT Correction", false)
+local DTRecharge = menu.Switch("Doubletap Exploits", "Instant Recharge", false)
+local antiaimpresets = menu.Combo("Anti-Aim", "Presets", {"Disabled", "Matchmaking", "Deathmatch", "HvH", "Wingman"}, 0, "Anti-Aim presets")
+local lowdelta = menu.Switch('Anti-Aim', "Low delta", false)
+local legitaa = menu.Switch('Anti-Aim', "Legit AA", false)
 local trashtalk = menu.Switch("General", "TrashTalk", false)
-local DTMenu = menu.Switch("Exploits", "Customized Doubletap", false, "")
-local DTCorrection = menu.Switch("Exploits", "Disable DT Correction", false)
-local DTModes = menu.Combo("Exploits", "Modes", {"Instant", "Medium", "Slow", "Insane"}, 0)
-local DTRecharge = menu.Switch("Exploits", "Instant Recharge", false)
 local JumpScout = menu.Switch('General', "Jumpscout", false)
 local JumpScoutHC = menu.SliderInt('General', "Hitchance", 1,1,100)
 local JumpScoutMD = menu.SliderInt('General', "Minimum damage", 1,1,130)
 local LegsBreaker = menu.Switch('General', "Legs Breaker", false)
-local lowdelta = menu.Switch('Anti-Aim', "Low delta", false)
-local legitaa = menu.Switch('Anti-Aim', "Legit AA", false)
-local antiaimpresets = menu.Combo("Anti-Aim", "Presets", {"Disabled", "Matchmaking", "Deathmatch", "HvH", "Wingman"}, 0, "Anti-Aim presets")
+local hitsound = menu.Switch('General', "Hit Sound", false)
 local Trail = menu.Switch('General', "Trails", false)
 local TrailSize = menu.SliderInt('General', "Trails size", 1, 1, 10)
 local TrailLength = menu.SliderInt('General', "Trails length", 1, 1, 100)
@@ -24,7 +24,7 @@ local ScopeWidth = menu.SliderInt('General', 'Scope width', 0, 0, 100)
 local displayNades = menu.Switch('General', "Grenade Helper", false)
 local GHOnlyVisible = menu.Switch('Grenade Helper', "Only visible", false)
 local GHSilentThrow = menu.Switch('Grenade Helper', "Silent throw", false, "Rage only")
-local GHKeybind = menu.Switch('General', "Throw", false, "Grenade helper throw key")
+local GHKeybind = menu.Switch('Grenade Helper', "Throw", false, "Grenade helper throw key")
 local displayoneways = menu.Switch('General', "Oneway helper", false)
 local OWOnlyVisible = menu.Switch('Oneway Helper', "Only visible", false)
 local sorted = false
@@ -48,6 +48,60 @@ local hz_io_w = 0
 local delta = 0
 local lag
 
+--#region rgb line
+local rgb_line = menu.Switch("General", "RGB Line", false, "Enable/Disable")
+local line_size = menu.SliderInt("General", "RGB Line Size", 2, 1, 5, "Size")
+local function rgb_line_draw()
+	local screen = g_EngineClient:GetScreenSize()
+	local vector1 = Vector2.new(0 , 0)
+	local vector2 = Vector2.new(screen.x / 4 , line_size:GetInt())
+	local vector3 = Vector2.new( screen.x / 4 , 0)
+	local vector4 = Vector2.new(screen.x / 2 , line_size:GetInt())
+	local vector5 = Vector2.new(screen.x / 2 , 0)
+	local vector6 = Vector2.new(screen.x / 4 * 3 , line_size:GetInt())
+	local vector7 = Vector2.new( screen.x / 4 * 3 , 0)
+	local vector8 = Vector2.new(screen.x , line_size:GetInt())
+	gametime = g_GlobalVars.realtime
+
+	r = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 10) * 127 + 128)) / 1000 * 3.92
+	g = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 20) * 127 + 128)) / 1000 * 3.92
+	b = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 30) * 127 + 128)) / 1000 * 3.92
+
+	r1 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 40) * 127 + 128)) / 1000 * 3.92
+	g1 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 50) * 127 + 128)) / 1000 * 3.92
+	b1 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 60) * 127 + 128)) / 1000 * 3.92
+
+	r2 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 70) * 127 + 128)) / 1000 * 3.92
+	g2 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 80) * 127 + 128)) / 1000 * 3.92
+	b2 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 90) * 127 + 128)) / 1000 * 3.92
+
+	r3= (math.floor(math.sin(g_GlobalVars.realtime * 1 + 100) * 127 + 128)) / 1000 * 3.92
+	g3= (math.floor(math.sin(g_GlobalVars.realtime * 1 + 110) * 127 + 128)) / 1000 * 3.92
+	b3= (math.floor(math.sin(g_GlobalVars.realtime * 1 + 120) * 127 + 128)) / 1000 * 3.92
+		
+	r4 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 130) * 127 + 128)) / 1000 * 3.92
+	g4 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 140) * 127 + 128)) / 1000 * 3.92
+	b4 = (math.floor(math.sin(g_GlobalVars.realtime * 1 + 150) * 127 + 128)) / 1000 * 3.92
+
+		
+
+	local clr1 = Color.new(r,g,b ,100)
+	local clr2 = Color.new(r1,g1, b1 ,100)
+	local clr3 = Color.new(r2,g2,b2 ,100)
+	local clr4 = Color.new(r3,g3,b3,100)
+	local clr5 = Color.new(r4,g4,b4 ,100)
+
+
+	if rgb_line:GetBool() then
+		g_Render:GradientBoxFilled(vector1, vector2, clr1, clr2, clr1, clr2)
+		g_Render:GradientBoxFilled(vector3, vector4, clr2, clr3, clr2, clr3)
+		g_Render:GradientBoxFilled(vector5, vector6, clr3, clr4, clr3, clr4)
+		g_Render:GradientBoxFilled(vector7, vector8, clr4, clr5, clr4, clr5)
+	end
+end
+--#endregion
+
+
 local function text_color(alpha)
     return Color.new(0.9, 0.9, 0.9, 0.95 * alpha)
 end
@@ -62,19 +116,6 @@ local function move(x, y, w, h, slider_x, slider_y)
         slider_x:SetInt(mouse.x - w / 2)
         slider_y:SetInt(mouse.y - 10)
     end
-end
-
-local function get_time()
-    local seconds = math.floor(utils.UnixTime() / 1000)
-    local hours = math.floor((seconds / 3600 + 3) % 24)
-    local minutes = math.floor(seconds / 60 % 60)
-    local sec = math.floor(seconds % 60)
-
-    if sec < 10 then sec = "0" .. sec end
-    if minutes < 10 then minutes = "0" .. minutes end
-    if hours < 10 then hours = "0" .. hours end
-
-    return hours .. ":" .. minutes .. ":" .. sec
 end
 
 local function get_spectators()
@@ -105,7 +146,15 @@ local ui_keybinds_x = menu.SliderInt("Visuals", "keybinds x", 5, 0, screen_size.
 local ui_keybinds_y = menu.SliderInt("Visuals", "keybinds y", math.floor(screen_size.y / 2), 0, screen_size.y)
 local ui_spectators_x = menu.SliderInt("Visuals", "spectators x", 5, 0, screen_size.x)
 local ui_spectators_y = menu.SliderInt("Visuals", "spectators y", math.floor(screen_size.y / 3), 0, screen_size.y)
-
+local oldStatus = g_Config:FindVar("Visuals","World", "Hit", "Hit Sound"):GetBool()
+hitsound:RegisterCallback(function() 
+    if hitsound:GetBool() then
+        oldStatus = g_Config:FindVar("Visuals","World", "Hit", "Hit Sound"):GetBool()
+        g_Config:FindVar("Visuals","World", "Hit", "Hit Sound"):SetBool(false)
+    else 
+        g_Config:FindVar("Visuals","World", "Hit", "Hit Sound"):SetBool(oldStatus)
+    end
+end)
 local get_theme = {
     [0] = function(x, y, w, col)
         g_Render:GradientBoxFilled(Vector2.new(x + w, y), Vector2.new(x + w / 2, y - 2), color(255, 234, 0, col:a()), color(255, 0, 238, col:a()), color(255, 234, 0, col:a()), color(255, 0, 238, col:a()))
@@ -221,7 +270,7 @@ local function draw_fucking_box(x, y, w, text, style, line, line_color)
 end
 
 local function draw_watermark()
-    local watermark_text = string.format("%s | %s | delay: %sms | %stick | %s", get_custom_text_from_ui("neverlose", ui_custom_cheat_name), get_custom_text_from_ui(cheat_username, ui_custom_username), get_local_ping(), get_server_tick(), get_time())
+    local watermark_text = string.format("%s | %s | delay: %sms | %stick", get_custom_text_from_ui("neverlose", ui_custom_cheat_name), get_custom_text_from_ui(cheat_username, ui_custom_username), get_local_ping(), get_server_tick())
 
     render_adaptive_box("watermark", screen_size.x, 10, watermark_text, 1)
 end
@@ -366,23 +415,23 @@ cheat.RegisterCallback('registered_shot', function(shot)
     if reason == 0 then
         -- hit
         logs[#logs+1] = {('Hit ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1]), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Hit ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1])
+        print('[Essentials.Lua] '.. 'Hit ' .. Name .. ' for ' .. shot.damage .. ' in ' .. hitboxes[shot.hitgroup+1])
     elseif reason == 1 then
         -- resolver
         logs[#logs+1] = {('Missed ' .. Name .. ' due to resolver'), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Missed ' .. Name .. ' due to resolver')
+        print('[Essentials.Lua] '.. 'Missed ' .. Name .. ' due to resolver')
     elseif reason == 2 then
         -- spread
         logs[#logs+1] = {('Missed ' .. Name .. ' due to spread'), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Missed ' .. Name .. ' due to spread')
+        print('[Essentials.Lua] '.. 'Missed ' .. Name .. ' due to spread')
     elseif reason == 3 then
         -- Occlusion
         logs[#logs+1] = {('Missed ' .. Name .. ' due to occlusion'), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Missed ' .. Name .. ' due to occlusion')
+        print('[Essentials.Lua] '.. 'Missed ' .. Name .. ' due to occlusion')
     elseif reason == 4 then
         -- Prediction Error
         logs[#logs+1] = {('Missed ' .. Name .. ' due to prediction error'), g_GlobalVars.tickcount + 300, 0}
-        print('[Oneway.Lua] '.. 'Missed ' .. Name .. ' due to prediction error')
+        print('[Essentials.Lua] '.. 'Missed ' .. Name .. ' due to prediction error')
     end
 end)
 
@@ -477,9 +526,7 @@ local onewaylocations = {
     {"de_train", "Tunnel Two", "Fake duck", 15, {1969.5577392578125, -779.9430541992188, -214.94512939453125}, {-2.2586476802825928, 96.63731384277344, 0}, "Oneway"},
     {"de_anubis", "CT Side", "Fake duck", 15, {-582.8221435546875, 2328.042236328125, 31.949859619140625}, {-2.097200870513916, -91.29068756103516, 0}, "Oneway"},
     {"de_anubis", "Middle", "Fake duck", 15, {374.30450439453125, 1477.012451171875, 57.668325424194336}, {1.9360682964324951, -99.35801696777344, 0}, "Oneway"},
-
 }
-
 local locations = {
     {"de_inferno", {2146.013671875, 1815.412353515625, 192.03125}, {-51.20778274536133, 82.2809066772461, 0}, "molotov", "Wall", "Jump+Throw", 1},
     {"de_inferno", {1832.9774169921875, 1387.2230224609375, 224.03125}, {-24.11488151550293, -76.67398071289062, 0}, "molotov", "Box A", "Throw", 1},
@@ -2370,11 +2417,11 @@ local keybindsList = function()
 end
 
 cheat.RegisterCallback('draw', function()
+    rgb_line_draw()
     local is_rage = quest(tabs:GetInt() == 0)
     local is_visible = quest(tabs:GetInt() == 1)
     local is_misc = quest(tabs:GetInt() == 2)
     local is_hotkeys = quest(tabs:GetInt() == 3)
-	DTMenu:SetVisible(is_rage)
 	DTCorrection:SetVisible(is_rage)
 	DTModes:SetVisible(is_rage)
     DTRecharge:SetVisible(is_rage)
@@ -2383,6 +2430,7 @@ cheat.RegisterCallback('draw', function()
     antiaimpresets:SetVisible(is_rage)
     LegsBreaker:SetVisible(is_rage)
 	trashtalk:SetVisible(is_visible)
+    hitsound:SetVisible(is_visible)
     Trail:SetVisible(is_visible)
     TrailSize:SetVisible(quest(is_visible and Trail:GetBool()))
     TrailLength:SetVisible(quest(is_visible and Trail:GetBool()))
@@ -2401,11 +2449,13 @@ cheat.RegisterCallback('draw', function()
     CustomScope:SetVisible(quest(is_visible))
     ScopeOrigin:SetVisible(quest(is_visible and CustomScope:GetBool()))
     ScopeWidth:SetVisible(quest(is_visible and CustomScope:GetBool()))
+	rgb_line:SetVisible(is_visible)
+	line_size:SetVisible(quest(is_visible and rgb_line:GetBool()))
     displayNades:SetVisible(is_misc)
     GHOnlyVisible:SetVisible(quest(is_misc and displayNades:GetBool()))
     GHSilentThrow:SetVisible(quest(is_misc and displayNades:GetBool()))
+	GHKeybind:SetVisible(quest(is_misc and displayNades:GetBool()))
     manualIndicators:SetVisible(is_visible)
-    GHKeybind:SetVisible(is_hotkeys)
     displayoneways:SetVisible(is_misc)
     OWOnlyVisible:SetVisible(quest(is_misc and displayoneways:GetBool()))
     JumpScout:SetVisible(is_rage)
@@ -2449,18 +2499,6 @@ local function instant_recharge()
     end
 
 end
-
-local function exploits_func()
-     if (DTMenu:GetBool() == false) then
-    DTCorrection:SetVisible(false)
-    DTModes:SetVisible(false)
-    DTRecharge:SetVisible(false)
-	end
-	if (DTMenu:GetBool() == true) then
-    DTCorrection:SetVisible(true)
-    DTModes:SetVisible(true)
-    DTRecharge:SetVisible(true)
-	end
 	
     local instant = 16
     local fast = 15
@@ -2479,21 +2517,20 @@ local function exploits_func()
     end
 
     if (DTModes:GetInt() == 0) then
-        exploits.OverrideDoubleTapSpeed(instant)
+        exploits.OverrideDoubleTapSpeed(default)
 
     else if (DTModes:GetInt() == 1) then
         exploits.OverrideDoubleTapSpeed(fast)
         
     else if (DTModes:GetInt() == 2) then
-        exploits.OverrideDoubleTapSpeed(default)
+		exploits.OverrideDoubleTapSpeed(instant)
         
     else if (DTModes:GetInt() == 3) then
         exploits.OverrideDoubleTapSpeed(17)
         g_CVar:FindVar("cl_clock_correction"):SetInt(0)
         g_CVar:FindVar("cl_clock_correction_adjustment_max_amount"):SetInt(450)
+    end
 	end
-    end
-    end
     end   
 end
 
@@ -2541,7 +2578,7 @@ cheat.RegisterCallback('events', function(event)
             local entity = g_EntityList:GetClientEntity(victim)
             local Name = entity:GetPlayer():GetName()
             logs[#logs+1] = {('Hit by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1]), g_GlobalVars.tickcount + 300, 0}
-            print('[Oneway.Lua] '.. 'Hit by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1])
+            print('[Essentials.Lua] '.. 'Hit by ' .. Name .. ' for ' .. target_damage .. ' in ' .. hitboxes[hitbox+1])
         end
     end
 end)
@@ -2914,6 +2951,13 @@ local function get_phrase()
 end
 
 cheat.RegisterCallback("events", function(event)
+    if event:GetName() == "player_hurt" and hitsound:GetBool() then
+        g_Config:FindVar("Visuals","World", "Hit", "Hit Sound")
+        local attacker = g_EngineClient:GetPlayerForUserId(event:GetInt("attacker", 0))
+        if attacker == g_EngineClient:GetLocalPlayer() then
+            g_EngineClient:ExecuteClientCmd("play buttons/arena_switch_press_02.wav")
+        end
+    end
 	if (trashtalk:GetBool() == false) then return end
     if (trashtalk:GetBool() == true) then
     if event:GetName() ~= "player_death" then return end
@@ -2925,5 +2969,8 @@ end
     if victim == attacker or attacker ~= me then return end
 
     g_EngineClient:ExecuteClientCmd('say "' .. get_phrase() .. '"')
+end)
+    cheat.RegisterCallback('destroy', function() 
+    g_Config:FindVar("Visuals","World", "Hit", "Hit Sound"):SetBool(oldStatus)
 end)
 end)
